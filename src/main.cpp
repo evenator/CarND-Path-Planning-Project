@@ -38,7 +38,9 @@ string hasData(string s) {
 int main() {
   uWS::Hub h;
   auto map = Map::from_file("../data/highway_map.csv");
-  h.onMessage([&map](uWS::WebSocket<uWS::SERVER> ws, char *data,
+  auto last_time = std::chrono::system_clock::now();
+
+  h.onMessage([&map, &last_time](uWS::WebSocket<uWS::SERVER> ws, char *data,
                                   size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -49,6 +51,10 @@ int main() {
       auto s = hasData(data);
 
       if (s != "") {
+        auto this_time = std::chrono::system_clock::now();
+        std::chrono::duration<double> time_since = this_time - last_time;
+        std::cout << "LOOP TIME: " << time_since.count() << " s since last callback" << std::endl;
+        last_time = this_time;
         auto j = json::parse(s);
 
         string event = j[0].get<string>();
@@ -58,15 +64,16 @@ int main() {
 
           // Main car's localization Data
           double speed = mph_to_mps(j[1]["speed"]);
-          Eigen::VectorXd car_state_xy(4);
+          double theta = deg2rad(j[1]["yaw"]);
+          Eigen::Vector4d car_state_xy(j[1]["x"], j[1]["y"], theta, speed);
+          Eigen::Vector3d car_state_sd(j[1]["s"], j[1]["d"], speed);
           
-          car_state_xy << j[1]["x"], j[1]["y"], j[1]["yaw"], speed;
-          Eigen::VectorXd car_state_sd(3);
-          car_state_sd << j[1]["s"], j[1]["d"], speed;
-          std::cout << "Car state:" << std::endl << car_state_sd << std::endl;
+          Eigen::IOFormat vector_format(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", ", ", "", "", "(", ")");
+          std::cout << "Car State " << car_state_xy.format(vector_format) << std::endl;
 
           // Previous path data given to the Planner
           auto previous_path = Path(j[1]["previous_path_x"], j[1]["previous_path_y"]);
+          std::cout << "Previous path has " << previous_path.size() << " points." << std::endl;
 
           // Sensor Fusion Data, a list of all other cars on the same side of
           // the road.
@@ -80,9 +87,13 @@ int main() {
             path = planner.plan(previous_path);
           }
           else {
-          
-          path = planner.plan(car_state_sd);
+            path = planner.plan(car_state_xy);
           }
+          //for (size_t i = 0; i < path.size(); ++i) {
+          //  std::cout << "(" << path[i][0] << ", " << path[i][1] << ") ";
+          //}
+          //std::cout << std::endl;
+          std::cout << "Sending " << path.size() << " points." << std::endl;
           msgJson["next_x"] = path.get_x();
           msgJson["next_y"] = path.get_y();
 
@@ -90,6 +101,7 @@ int main() {
 
           // this_thread::sleep_for(chrono::milliseconds(1000));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          std::cout << "--------------------------------" << std::endl;
         }
       } else {
         // Manual driving

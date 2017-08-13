@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "geometry.h"
+#include "Eigen-3.3/Eigen/Dense"
 
 class Map {
  public:
@@ -79,7 +80,11 @@ class Map {
   /**
    * Transform from Cartesian x,y coordinates to Frenet s,d coordinates
    */
-  std::vector<double> get_frenet(double x, double y, double theta) const {
+  Eigen::Vector2d get_frenet(Eigen::Vector3d xy_theta) {
+    return get_frenet(xy_theta[0], xy_theta[1], xy_theta[2]);
+  }
+  
+  Eigen::Vector2d get_frenet(double x, double y, double theta) const {
     int next_wp = next_waypoint(x, y, theta);
 
     int prev_wp;
@@ -119,13 +124,17 @@ class Map {
 
     frenet_s += distance(0, 0, proj_x, proj_y);
 
-    return {frenet_s, frenet_d};
+    return Eigen::Vector2d(frenet_s, frenet_d);
   }
 
   /**
    * Transform from Frenet s,d coordinates to Cartesian x,y
    */
-  std::vector<double> get_xy(double s, double d) const {
+  Eigen::Vector2d get_xy(Eigen::Vector2d const& frenet) const {
+    return get_xy(frenet[0], frenet[1]);
+  }
+
+  Eigen::Vector2d get_xy(double s, double d) const {
     int prev_wp = -1;
     
     s = fmod(s, max_s_);
@@ -148,7 +157,7 @@ class Map {
     double x = seg_x + d * cos(perp_heading);
     double y = seg_y + d * sin(perp_heading);
 
-    return {x, y};
+    return Eigen::Vector2d(x, y);
   }
 
   size_t size() const { return x_.size(); }
