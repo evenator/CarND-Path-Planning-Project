@@ -12,10 +12,10 @@ double lane_to_d(int lane) {
   return 0;
 }
 
-class Planner
+class LaneKeepPlanner
 {
 public:
-  Planner(Map* map) : v_des_(21.0), lane_des_(1), map_(map), follow_dist_(20.0) { }
+  LaneKeepPlanner(Map* map, int lane) : v_des_(21.0), lane_des_(lane), map_(map), follow_dist_(20.0) { }
 
   /**
    * Plan a path from a start state, which is a 4-vector

@@ -40,8 +40,9 @@ int main() {
   uWS::Hub h;
   auto map = Map::from_file("../data/highway_map.csv");
   auto last_time = std::chrono::system_clock::now();
+  int lane = 1;
 
-  h.onMessage([&map, &last_time](uWS::WebSocket<uWS::SERVER> ws, char *data,
+  h.onMessage([&map, &last_time, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data,
                                   size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -85,7 +86,7 @@ int main() {
 
           json msgJson;
 
-          auto planner = Planner(&map);
+          auto planner = LaneKeepPlanner(&map, lane);
           Path path;
           if (previous_path.size() > 0) {
             path = planner.plan(previous_path, obstacles);
@@ -93,10 +94,6 @@ int main() {
           else {
             path = planner.plan(car_state_xy, obstacles);
           }
-          //for (size_t i = 0; i < path.size(); ++i) {
-          //  std::cout << "(" << path[i][0] << ", " << path[i][1] << ") ";
-          //}
-          //std::cout << std::endl;
           std::cout << "Sending " << path.size() << " points." << std::endl;
           msgJson["next_x"] = path.get_x();
           msgJson["next_y"] = path.get_y();
