@@ -1,25 +1,23 @@
-#include <math.h>
-#include <uWS/uWS.h>
-#include <chrono>
-#include <iostream>
-#include <thread>
-#include <vector>
 #include "Eigen-3.3/Eigen/Dense"
-#include "json.hpp"
 #include "geometry.h"
+#include "json.hpp"
 #include "map.h"
 #include "obstacle.h"
 #include "path.h"
 #include "planner.h"
+#include <chrono>
+#include <iostream>
+#include <math.h>
+#include <thread>
+#include <uWS/uWS.h>
+#include <vector>
 
 using namespace std;
 
 // for convenience
 using json = nlohmann::json;
 
-inline double mph_to_mps(double speed_mph) {
-  return speed_mph * 0.44704;
-}
+inline double mph_to_mps(double speed_mph) { return speed_mph * 0.44704; }
 
 // Checks if the SocketIO event has JSON data.
 // If there is data the JSON object in string format will be returned,
@@ -42,8 +40,9 @@ int main() {
   auto last_time = std::chrono::system_clock::now();
   int lane = 1;
 
-  h.onMessage([&map, &last_time, &lane](uWS::WebSocket<uWS::SERVER> ws, char *data,
-                                  size_t length, uWS::OpCode opCode) {
+  h.onMessage([&map, &last_time, &lane](uWS::WebSocket<uWS::SERVER> ws,
+                                        char *data, size_t length,
+                                        uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -55,7 +54,8 @@ int main() {
       if (s != "") {
         auto this_time = std::chrono::system_clock::now();
         std::chrono::duration<double> time_since = this_time - last_time;
-        std::cout << "LOOP TIME: " << time_since.count() << " s since last callback" << std::endl;
+        std::cout << "LOOP TIME: " << time_since.count()
+                  << " s since last callback" << std::endl;
         last_time = this_time;
         auto j = json::parse(s);
 
@@ -69,18 +69,23 @@ int main() {
           double theta = deg2rad(j[1]["yaw"]);
           Eigen::Vector4d car_state_xy(j[1]["x"], j[1]["y"], theta, speed);
           Eigen::Vector3d car_state_sd(j[1]["s"], j[1]["d"], speed);
-          
-          Eigen::IOFormat vector_format(Eigen::StreamPrecision, Eigen::DontAlignCols, ", ", ", ", "", "", "(", ")");
-          std::cout << "Car State " << car_state_xy.format(vector_format) << std::endl;
+
+          Eigen::IOFormat vector_format(Eigen::StreamPrecision,
+                                        Eigen::DontAlignCols, ", ", ", ", "",
+                                        "", "(", ")");
+          std::cout << "Car State " << car_state_xy.format(vector_format)
+                    << std::endl;
 
           // Previous path data given to the Planner
-          auto previous_path = Path(j[1]["previous_path_x"], j[1]["previous_path_y"]);
-          std::cout << "Previous path has " << previous_path.size() << " points." << std::endl;
+          auto previous_path =
+              Path(j[1]["previous_path_x"], j[1]["previous_path_y"]);
+          std::cout << "Previous path has " << previous_path.size()
+                    << " points." << std::endl;
 
           // Sensor Fusion Data, a list of all other cars on the same side of
           // the road.
           std::vector<Obstacle> obstacles;
-          for (auto const& obstacle_params : j[1]["sensor_fusion"]) {
+          for (auto const &obstacle_params : j[1]["sensor_fusion"]) {
             obstacles.emplace_back(obstacle_params);
           }
 
@@ -90,8 +95,7 @@ int main() {
           Path path;
           if (previous_path.size() > 0) {
             path = planner.plan(previous_path, obstacles);
-          }
-          else {
+          } else {
             path = planner.plan(car_state_xy, obstacles);
           }
           std::cout << "Sending " << path.size() << " points." << std::endl;

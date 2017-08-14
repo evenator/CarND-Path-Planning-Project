@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "geometry.h"
 #include "Eigen-3.3/Eigen/Dense"
+#include "geometry.h"
 
 class Map {
- public:
+public:
   static Map from_file(std::string const &map_file) {
     Map map;
 
@@ -41,7 +41,7 @@ class Map {
    * Get the index of the waypoint closest to the given x-y coordinates
    */
   size_t closest_waypoint(double x, double y) const {
-    double closestLen = 100000;  // large number
+    double closestLen = 100000; // large number
     size_t closestWaypoint = 0;
 
     for (size_t i = 0; i < size(); i++) {
@@ -83,7 +83,7 @@ class Map {
   Eigen::Vector2d get_frenet(Eigen::Vector3d xy_theta) {
     return get_frenet(xy_theta[0], xy_theta[1], xy_theta[2]);
   }
-  
+
   Eigen::Vector2d get_frenet(double x, double y, double theta) const {
     int next_wp = next_waypoint(x, y, theta);
 
@@ -130,13 +130,13 @@ class Map {
   /**
    * Transform from Frenet s,d coordinates to Cartesian x,y
    */
-  Eigen::Vector2d get_xy(Eigen::Vector2d const& frenet) const {
+  Eigen::Vector2d get_xy(Eigen::Vector2d const &frenet) const {
     return get_xy(frenet[0], frenet[1]);
   }
 
   Eigen::Vector2d get_xy(double s, double d) const {
     int prev_wp = -1;
-    
+
     s = fmod(s, max_s_);
 
     while (s > s_[prev_wp + 1] && (prev_wp < (int)(size() - 1))) {
@@ -165,7 +165,7 @@ class Map {
   // The max s value before wrapping around the track back to 0
   const double max_s_ = 6945.554;
 
- private:
+private:
   Map() {}
 
   std::vector<double> x_;
@@ -174,4 +174,4 @@ class Map {
   std::vector<double> dx_;
   std::vector<double> dy_;
 };
-#endif  // MAP_H_
+#endif // MAP_H_
