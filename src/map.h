@@ -161,22 +161,6 @@ class Map {
   }
 
   size_t size() const { return x_.size(); }
-  
-  /**
-   * Return true if an object is fully or partially in a lane
-   *
-   * Assumes that the object is 2 m wide as the lane (as a car would be)
-   */
-  bool in_lane(int lane, double d) {
-    return (d > lane*4 - 1) && (d < (lane+1)*4 + 1);
-  }
-  
-  /**
-   * Return the d value of the center of a lane
-   */
-  double lane_center(int lane) {
-    return lane * 4 + 2;
-  }
 
   // The max s value before wrapping around the track back to 0
   const double max_s_ = 6945.554;

@@ -35,4 +35,20 @@ Eigen::Vector2d transform_to_global(Eigen::Vector3d const& local_origin,
   h << c_theta, -s_theta, s_theta, c_theta;
   return local_origin.head(2) + h * point;
 }
+  
+  /**
+   * Return true if an object is fully or partially in a lane
+   *
+   * Assumes that the object is 2 m wide as the lane (as a car would be)
+   */
+  bool in_lane(int lane, double d) {
+    return (d > lane*4 - 1) && (d < (lane+1)*4 + 1);
+  }
+  
+  /**
+   * Return the d value of the center of a lane
+   */
+  double lane_center(int lane) {
+    return lane * 4 + 2;
+  }
 #endif  // GEOMETRY_H_

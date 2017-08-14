@@ -8,6 +8,7 @@
 #include "json.hpp"
 #include "geometry.h"
 #include "map.h"
+#include "obstacle.h"
 #include "path.h"
 #include "planner.h"
 
@@ -77,17 +78,20 @@ int main() {
 
           // Sensor Fusion Data, a list of all other cars on the same side of
           // the road.
-          auto sensor_fusion = j[1]["sensor_fusion"];
+          std::vector<Obstacle> obstacles;
+          for (auto const& obstacle_params : j[1]["sensor_fusion"]) {
+            obstacles.emplace_back(obstacle_params);
+          }
 
           json msgJson;
 
           auto planner = Planner(&map);
           Path path;
           if (previous_path.size() > 0) {
-            path = planner.plan(previous_path);
+            path = planner.plan(previous_path, obstacles);
           }
           else {
-            path = planner.plan(car_state_xy);
+            path = planner.plan(car_state_xy, obstacles);
           }
           //for (size_t i = 0; i < path.size(); ++i) {
           //  std::cout << "(" << path[i][0] << ", " << path[i][1] << ") ";
