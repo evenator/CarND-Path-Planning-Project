@@ -8,8 +8,6 @@
 #include "spline.h"
 #include <vector>
 
-double lane_to_d(int lane) { return 0; }
-
 class LaneKeepPlanner {
 public:
   LaneKeepPlanner(Map *map, int lane)
@@ -114,4 +112,25 @@ private:
   const double MAX_A_ = 5.0;    // Max acceleration/decel, m/s^2
   Map *map_;
 };
+
+class FSMPlanner {
+public:
+  FSMPlanner(Map *map) : map_(map), lane_(1) {}
+
+  Path plan(Eigen::Vector4d const &car_state_xy,
+            std::vector<Obstacle> const &obstacles,
+            Path const &previous_path = Path()) {
+    auto planner = LaneKeepPlanner(map_, lane_);
+    if (previous_path.size() > 0) {
+      return planner.plan(previous_path, obstacles);
+    } else {
+      return planner.plan(car_state_xy, obstacles);
+    }
+  }
+
+private:
+  Map *map_;
+  int lane_;
+};
+
 #endif // PLANNER_H_
