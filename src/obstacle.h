@@ -19,9 +19,28 @@ public:
         v_xy_(vx, vy),
         frenet_(s, d) {}
 
-  Eigen::Vector2d sd() const { return frenet_; }
+  Eigen::Vector2d sd(double time=0) const {
+    double v = v_xy_.norm();
+    return frenet_ + Eigen::Vector2d(time * v, 0);
+  }
 
   Eigen::Vector2d velocity() const { return v_xy_; }
+
+  Eigen::Vector2d xy(double time=0) const {
+    return xy_ + time * v_xy_;
+  }
+
+  double distance(Eigen::Vector2d const& other_xy, double time=0) const {
+    return (xy(time) - other_xy).norm();
+  }
+
+  uint32_t get_id() const { return id_; }
+
+  bool in_collision(Eigen::Vector2d const& other_xy,
+                    double radius,
+                    double time=0) const {
+    return distance(other_xy, time) < radius;
+  }
 
 private:
   uint32_t id_;
