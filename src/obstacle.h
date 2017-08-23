@@ -70,4 +70,20 @@ find_immediate_leader(Eigen::Vector2d const &vehicle_frenet,
   }
   return leader;
 }
+
+
+bool check_collisions(Eigen::Vector2d xy,
+                      std::vector<Obstacle> const &obstacles,
+                      double collision_radius,
+                      double time) {
+  bool in_collision = false;
+  for (auto const& obstacle : obstacles) {
+    std::cout << "(" << xy[0] << ", " << xy[1] << ")@ " << time << " Obstacle " << obstacle.get_id() << "@(" << obstacle.xy(time)[0] << ", " << obstacle.xy(time)[1] << ") range=" << obstacle.distance(xy, time) << std::endl;
+    if (obstacle.in_collision(xy, collision_radius, time)) {
+      std::cout << "In collision with obstacle " << obstacle.get_id() << " at (" << xy[0] << ", " << xy[1] << ")" << std::endl;
+      in_collision = true;
+    }
+  }
+  return in_collision;  // No collisions
+}
 #endif // MAP_H_
