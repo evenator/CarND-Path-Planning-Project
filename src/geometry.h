@@ -43,10 +43,10 @@ Eigen::Vector2d transform_to_global(Eigen::Vector3d const &local_origin,
 /**
  * Return true if an object is fully or partially in a lane
  *
- * Assumes that the object is 2 m wide as the lane (as a car would be)
+ * Assumes that the object is 3 m wide (wider than a car would be)
  */
 bool in_lane(int lane, double d) {
-  return (d > lane * 4 - 1) && (d < (lane + 1) * 4 + 1);
+  return (d > lane * 4.0 - 1.5) && (d < (lane + 1) * 4.0 + 1.5);
 }
 
 /**
