@@ -82,10 +82,19 @@ public:
       // Convert point from ego frame to global frame and push onto the path
       Eigen::Vector2d xy =
           transform_to_global(start_state.head(3), state.head(2));
+      double time = path.size() * T_STEP_;
+      const double collision_radius = 2.0;
+      // TODO: This is wildly inefficient
+      if (check_collisions(xy, obstacle_list, collision_radius, time)) {
+        // Path is in collision. Plan failed
+        path.set_valid(false);
+        return path;
+      }
       path.push_back(xy[0], xy[1]);
       added++;
     }
     std::cout << "Added " << added << " points" << std::endl;
+    path.set_valid(true);
     return path;
   }
 
