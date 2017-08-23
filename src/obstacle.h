@@ -14,6 +14,11 @@ public:
         v_xy_(json_params[3], json_params[4]),
         frenet_(json_params[5], json_params[6]) {}
 
+  Obstacle(uint32_t id, double x, double y, double vx, double vy, double s, double d)
+      : id_(id), xy_(x, y),
+        v_xy_(vx, vy),
+        frenet_(s, d) {}
+
   Eigen::Vector2d sd() const { return frenet_; }
 
   Eigen::Vector2d velocity() const { return v_xy_; }
