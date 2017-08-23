@@ -124,22 +124,138 @@ private:
 
 class FSMPlanner {
 public:
-  FSMPlanner(Map *map) : map_(map), lane_(1) {}
+  FSMPlanner(Map *map) : map_(map), lane_(1), changing_lane_(false) {}
 
   Path plan(Eigen::Vector4d const &car_state_xy,
             std::vector<Obstacle> const &obstacles,
             Path const &previous_path = Path()) {
+    // Update the state of changinge_lane_
+    auto car_sd = map_->get_frenet(car_state_xy.head(3));
+    if (changing_lane_) {
+      // If currently changing lanes, find out how far the car is from the destination
+      // lane. If it's within 0.5 meters, the lane change is complete.
+      double d = car_sd[1];
+      if (abs(d - lane_center(lane_)) < 0.5) {
+        changing_lane_ = false;
+      }
+    }
+
+    // Truncate previous plan to 10 points to allow more flexibility
+    const size_t trunc_size = 10;
+    Path truncated_previous;
+    for (size_t i = 0; i < trunc_size && i < previous_path.size(); ++i) {
+      truncated_previous.push_back(previous_path[i]);
+    }
+
+    // Find distance to leader vehicle in each lane
+    // TODO: There's some efficiency to be gained here
+    std::vector<double> leader_distances;
+    auto lane_sd = car_sd;
+    for (size_t lane = 0; lane < 3; lane++) {
+      lane_sd[1] = lane_center(lane);
+      auto leader = find_immediate_leader(lane_sd, obstacles);
+      double distance_to_leader = leader->sd()[0] - car_sd[0];
+      if (distance_to_leader < 0) {
+        distance_to_leader += map_->max_s_;
+      }
+      leader_distances.push_back(distance_to_leader);
+    }
+
+    // Choose the best lane
+    // This naive approach just chooses the lane with the most space until the next car
+    size_t best_lane = 0;
+    double best_dist = 0;
+    for (size_t lane = 0; lane < 3; lane++) {
+      if (leader_distances[lane] > best_dist) {
+        best_dist = leader_distances[lane];
+        best_lane = lane;
+      }
+    }
+
+    // Print lane info
+    for (size_t i = 0; i < 3; ++i) {
+      std::cout << "|";
+      if (best_lane == i) {
+        std::cout << "**";
+      }
+      else {
+        std::cout << "  ";
+      }
+      if (lane_ == i) {
+        std::cout << "(" << i << ")";
+      }
+      else {
+        std::cout << " " << i << " ";
+      }
+      if (best_lane == i) {
+        std::cout << "**";
+      }
+      else {
+        std::cout << "  ";
+      }
+    }
+    std::cout << "|" << std::endl
+              << "|-------|-------|-------|" << std::endl
+              << "|" << leader_distances[0] << "|" << leader_distances[1] << "|" << leader_distances[2] << "|" << std::endl;
+
+    // Only bother changing lanes if there's less than 50 m of space
+    // TODO: Reenable lane changing
+    bool should_change_lane = (leader_distances[lane_] < 50.0);
+
+    if (!changing_lane_ && should_change_lane) {
+      size_t next_lane = lane_;
+      if (best_lane < lane_) {
+        // Try to change lanes to the left
+        next_lane--;
+      }
+      else if (best_lane > lane_) {
+        // Try to change lanes to the right
+        next_lane++;
+      }
+
+      Path plan;
+      auto planner = LaneKeepPlanner(map_, next_lane);
+      if (previous_path.size() > 0) {
+        // TODO: Check for collisions
+        // TODO: Limit lateral acceleration during lane changes
+        plan = planner.plan(truncated_previous, obstacles);
+      } else {
+        plan = planner.plan(car_state_xy, obstacles);
+      }
+
+      if (plan.is_valid()) {
+          changing_lane_ = true;
+          lane_ = next_lane;
+          std::cout << "Changing lanes" << std::endl;
+          return plan;
+      }
+      else {
+        std::cout << "Lane change plan is invalid" << std::endl;
+      }
+    }
+
+    // Stay in the current lane
     auto planner = LaneKeepPlanner(map_, lane_);
+    Path plan;
     if (previous_path.size() > 0) {
-      return planner.plan(previous_path, obstacles);
-    } else {
-      return planner.plan(car_state_xy, obstacles);
+      plan = planner.plan(truncated_previous, obstacles);
+    }
+    else {
+      plan = planner.plan(car_state_xy, obstacles);
+    }
+    if (plan.is_valid()) {
+          return plan;
+    }
+    else {
+        std::cout << "!!!!!!!!!!!!!  Lane keep plan is invalid" << std::endl;
+        return plan;
     }
   }
 
 private:
   Map *map_;
   int lane_;
+  bool changing_lane_;
 };
 
 #endif // PLANNER_H_
