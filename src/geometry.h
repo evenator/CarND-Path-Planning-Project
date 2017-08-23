@@ -17,6 +17,10 @@ double distance(double x1, double y1, double x2, double y2) {
   return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
+double bearing(double x_from, double y_from, double x_to, double y_to) {
+  return atan2(y_to - y_from, x_to - x_from);
+}
+
 Eigen::Vector2d transform_to_local(Eigen::Vector3d const &local_origin,
                                    Eigen::Vector2d const &point) {
   Eigen::Vector2d translation = point - local_origin.head(2);
