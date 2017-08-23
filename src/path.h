@@ -28,6 +28,10 @@ public:
 
   size_t size() const { return x_.size(); }
 
+  void push_back(Eigen::Vector2d const& point) {
+    push_back(point[0], point[1]);
+  }
+
   void push_back(double x, double y) {
     x_.push_back(x);
     y_.push_back(y);
