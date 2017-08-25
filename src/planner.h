@@ -26,7 +26,7 @@ public:
     spline_x.push_back(0);
     spline_y.push_back(0);
     Eigen::Vector2d start_sd = map_->get_frenet(start_state.head(3));
-    for (double offset = 20; offset <= 80; offset += 20) {
+    for (double offset = 30; offset <= 100; offset += 20) {
       Eigen::Vector2d sd(start_sd[0] + offset, lane_center(lane_des_));
       Eigen::Vector2d global_xy = map_->get_xy(sd);
       Eigen::Vector2d xy = transform_to_local(start_state.head(3), global_xy);
@@ -118,7 +118,7 @@ private:
   double v_des_;                // Desired speed m/s
   int lane_des_;                // Desired lane (integer)
   double follow_dist_;          // Follow distance (m)
-  const double MAX_A_ = 5.0;    // Max acceleration/decel, m/s^2
+  const double MAX_A_ = 7.5;    // Max acceleration/decel, m/s^2
   Map *map_;
 };
 
