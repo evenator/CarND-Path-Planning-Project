@@ -162,8 +162,26 @@ public:
 
   size_t size() const { return x_.size(); }
 
+  /**
+   * Subtract s2 from s1, with wraparound
+   */
+  static double s_dist(double s1, double s2) {
+    double ds = s1 - s2;
+    if (ds >= max_s_) {
+      ds = fmod(ds, max_s_);
+    }
+    if (ds <= -max_s_) {
+      ds = fmod(ds, max_s_) + max_s_;
+    }
+    return ds;
+  }
+
+  static double get_max_s() {
+    return max_s_;
+  }
+
   // The max s value before wrapping around the track back to 0
-  const double max_s_ = 6945.554;
+  static constexpr double max_s_ = 6945.554;
 
 private:
   Map() {}

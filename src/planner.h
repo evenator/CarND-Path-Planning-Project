@@ -47,18 +47,18 @@ public:
     if (next_obstacle != obstacle_list.cend()) {
       obstacle_dist = fmod(next_obstacle->sd()[0] - start_sd[0], map_->max_s_);
       v_obs = next_obstacle->velocity().norm();
-      cout << "Distance to next obstacle is " << obstacle_dist << "m (" << v_obs
-           << " m/s)" << std::endl;
+      cout << "Distance to obstacle " << next_obstacle->get_id() << " is " << obstacle_dist << "m (" << v_obs
+           << " m/s) frenet=(" << next_obstacle->sd()[0] << ", " << next_obstacle->sd()[1] << ")" << std::endl;
     }
 
     // Pull points from the spline at given intervals
-    // We don't need theta anymore, and this state is in the ego frame
-    Eigen::Vector3d state(0, 0, start_state[3]); // x, y, v
+    // This state is in the ego frame
+    Eigen::Vector4d state(0, 0, 0, start_state[3]);
     size_t added = 0;
-    while (path.size() < PATH_SIZE_) {
+    while (path.size() < PATH_SIZE_ && obstacle_dist > 1.0) {
       // d is  the total distance to travel in this step, based on current
       // velocity
-      double d = state[2] * T_STEP_;
+      double d = state[3] * T_STEP_;
       obstacle_dist -= d;
       // Calculate dx using current v and current tangent slope m
       double m = (spline(state[0] + 0.01) - state[1]) / (.01);
@@ -69,28 +69,31 @@ public:
       // a is the desired acceleration
       double a = 0;
       // TODO: Don't use bang-bang acceleration
-      if (state[2] < v_des) {
+      if (state[3] < v_des) {
         a = MAX_A_;
       }
-      if (state[2] > v_des) {
+      if (state[3] > v_des) {
         a = -MAX_A_;
       }
       // State update equation:
+      Eigen::Vector2d previous_xy = state.head(2);
       state[0] += dx;
       state[1] = spline(state[0]);
-      state[2] += a * T_STEP_;
+      state[2] = bearing(previous_xy[0], previous_xy[1], state[0], state[1]);
+      state[3] += a * T_STEP_;
       // Convert point from ego frame to global frame and push onto the path
-      Eigen::Vector2d xy =
-          transform_to_global(start_state.head(3), state.head(2));
+      Eigen::Vector3d xy_theta = transform_pose_to_global(start_state.head(3), state.head(3));
+      Eigen::Vector2d sd = map_->get_frenet(xy_theta);
       double time = path.size() * T_STEP_;
       const double collision_radius = 2.0;
       // TODO: This is wildly inefficient
-      if (check_collisions(xy, obstacle_list, collision_radius, time)) {
+      const Eigen::Vector2d bounding_box_sd(3, 2);
+      if (false) {// (check_collisions(sd, obstacle_list, bounding_box_sd, time)) {
         // Path is in collision. Plan failed
         path.set_valid(false);
         return path;
       }
-      path.push_back(xy[0], xy[1]);
+      path.push_back(xy_theta[0], xy_theta[1]);
       added++;
     }
     std::cout << "Added " << added << " points" << std::endl;
@@ -150,15 +153,20 @@ public:
     // Find distance to leader vehicle in each lane
     // TODO: There's some efficiency to be gained here
     std::vector<double> leader_distances;
+    std::vector<int> leader_ids;
     auto lane_sd = car_sd;
     for (size_t lane = 0; lane < 3; lane++) {
       lane_sd[1] = lane_center(lane);
       auto leader = find_immediate_leader(lane_sd, obstacles);
-      double distance_to_leader = leader->sd()[0] - car_sd[0];
-      if (distance_to_leader < 0) {
-        distance_to_leader += map_->max_s_;
+      if (leader == obstacles.cend()) {
+        leader_distances.push_back(map_->get_max_s());
+        leader_ids.push_back(-1);
       }
-      leader_distances.push_back(distance_to_leader);
+      else {
+        double distance_to_leader = Map::s_dist(leader->sd()[0], car_sd[0]);
+        leader_distances.push_back(distance_to_leader);
+        leader_ids.push_back(leader->get_id());
+      }
     }
 
     // Choose the best lane
@@ -174,7 +182,7 @@ public:
 
     // Print lane info
     for (size_t i = 0; i < 3; ++i) {
-      std::cout << "|";
+      std::cout << "| ";
       if (best_lane == i) {
         std::cout << "**";
       }
@@ -188,19 +196,24 @@ public:
         std::cout << " " << i << " ";
       }
       if (best_lane == i) {
-        std::cout << "**";
+        std::cout << "** ";
       }
       else {
-        std::cout << "  ";
+        std::cout << "   ";
       }
     }
     std::cout << "|" << std::endl
-              << "|-------|-------|-------|" << std::endl
-              << "|" << leader_distances[0] << "|" << leader_distances[1] << "|" << leader_distances[2] << "|" << std::endl;
+              << "|---------|---------|---------|" << std::endl;
+    for (size_t i = 0; i < 3; ++i) {
+      std::cout << "|" << leader_ids[i] << "@" << leader_distances[i];
+    }
+    std::cout << "|" << std::endl;
 
-    // Only bother changing lanes if there's less than 50 m of space
+    // Only bother changing lanes if there's less than 50 m of space and the best lane has at least
+    // 10 m more space than this lane
     // TODO: Reenable lane changing
-    bool should_change_lane = (leader_distances[lane_] < 50.0);
+    bool should_change_lane = (leader_distances[lane_] < 50.0)
+                              && (best_dist - leader_distances[lane_] > 10.0);
 
     if (!changing_lane_ && should_change_lane) {
       size_t next_lane = lane_;
@@ -212,25 +225,33 @@ public:
         // Try to change lanes to the right
         next_lane++;
       }
+      double next_lane_center = lane_center(next_lane);
+      bool can_change_lane = !check_for_obstacles_frenet(car_sd[0]-10.0, car_sd[0]+50.0,
+                                                         next_lane_center - 2.0, next_lane_center + 2.0,
+                                                         obstacles);
+      if (can_change_lane) {
+        Path plan;
+        auto planner = LaneKeepPlanner(map_, next_lane);
+        if (previous_path.size() > 0) {
+          // TODO: Check for collisions
+          // TODO: Limit lateral acceleration during lane changes
+          plan = planner.plan(truncated_previous, obstacles);
+        } else {
+          plan = planner.plan(car_state_xy, obstacles);
+        }
 
-      Path plan;
-      auto planner = LaneKeepPlanner(map_, next_lane);
-      if (previous_path.size() > 0) {
-        // TODO: Check for collisions
-        // TODO: Limit lateral acceleration during lane changes
-        plan = planner.plan(truncated_previous, obstacles);
-      } else {
-        plan = planner.plan(car_state_xy, obstacles);
-      }
-
-      if (plan.is_valid()) {
-          changing_lane_ = true;
-          lane_ = next_lane;
-          std::cout << "Changing lanes" << std::endl;
-          return plan;
+        if (plan.is_valid()) {
+            changing_lane_ = true;
+            lane_ = next_lane;
+            std::cout << "Changing lanes" << std::endl;
+            return plan;
+        }
+        else {
+          std::cout << "Lane change plan is invalid" << std::endl;
+        }
       }
       else {
-        std::cout << "Lane change plan is invalid" << std::endl;
+        std::cout << "Can't change lane due to obstacles" << std::endl;
       }
     }
 

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include "map.h"
 
 class Obstacle {
 public:
@@ -34,12 +35,19 @@ public:
     return (xy(time) - other_xy).norm();
   }
 
+  double frenet_distance(Eigen::Vector2d const& other_sd, double time=0) const {
+    return (sd(time) - other_sd).norm();
+  }
+
   uint32_t get_id() const { return id_; }
 
-  bool in_collision(Eigen::Vector2d const& other_xy,
-                    double radius,
+  bool in_collision(Eigen::Vector2d const& other_sd,
+                    Eigen::Vector2d const& bounding_box_sd,
                     double time=0) const {
-    return distance(other_xy, time) < radius;
+    Eigen::Vector2d dist_sd = sd(time) - other_sd;
+    double s = abs(dist_sd[0]);
+    double d = abs(dist_sd[1]);
+    return s < bounding_box_sd[0] && d < bounding_box_sd[1];
   }
 
 private:
@@ -63,27 +71,54 @@ find_immediate_leader(Eigen::Vector2d const &vehicle_frenet,
       continue;
     }
     // Find the first obstacle with s greater than vehicle
-    if (obstacle_frenet[0] > vehicle_frenet[0] && obstacle_frenet[0] < best_s) {
+    double s_dist = Map::s_dist(obstacle_frenet[0], vehicle_frenet[0]);
+    if (s_dist > 0 && s_dist < best_s) {
       leader = obstacle;
-      best_s = obstacle_frenet[0];
+      best_s = s_dist;
     }
   }
+  std::cout << "Leader is " << leader->get_id() << " @ " << best_s << std::endl;
   return leader;
 }
 
 
-bool check_collisions(Eigen::Vector2d xy,
+bool check_collisions(Eigen::Vector2d sd,
                       std::vector<Obstacle> const &obstacles,
-                      double collision_radius,
+                      Eigen::Vector2d const& bounding_box_sd,
                       double time) {
   bool in_collision = false;
   for (auto const& obstacle : obstacles) {
-    std::cout << "(" << xy[0] << ", " << xy[1] << ")@ " << time << " Obstacle " << obstacle.get_id() << "@(" << obstacle.xy(time)[0] << ", " << obstacle.xy(time)[1] << ") range=" << obstacle.distance(xy, time) << std::endl;
-    if (obstacle.in_collision(xy, collision_radius, time)) {
-      std::cout << "In collision with obstacle " << obstacle.get_id() << " at (" << xy[0] << ", " << xy[1] << ")" << std::endl;
+    //std::cout << "(" << xy[0] << ", " << xy[1] << ")@ " << time << " Obstacle " << obstacle.get_id() << "@(" << obstacle.xy(time)[0] << ", " << obstacle.xy(time)[1] << ") range=" << obstacle.distance(xy, time) << std::endl;
+    if (obstacle.in_collision(sd, bounding_box_sd, time)) {
+      std::cout << "In collision with obstacle " << obstacle.get_id() << " at (" << sd[0] << ", " << sd[1] << ")" << std::endl;
       in_collision = true;
     }
   }
   return in_collision;  // No collisions
+}
+
+bool check_for_obstacles_frenet(double s_min, double s_max,
+                                double d_min, double d_max,
+                                std::vector<Obstacle> const &obstacles) {
+  std::cout << "Checking for obstacles in range s(" << s_min <<", "<<s_max<<") d("<<d_min<<", "<<d_max<<")"<<std::endl;
+  // For wraparound
+  bool invert_s = (s_min > s_max);
+  for (auto const& obstacle : obstacles) {
+    Eigen::Vector2d sd = obstacle.sd();
+    if (invert_s) {
+      if ((sd[0] < s_min || sd[0] > s_max) && sd[1] > d_min && sd[1] < d_max) {
+        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+        return true;
+      }
+    }
+    else {
+      if (sd[0] > s_min && sd[0] < s_max && sd[1] > d_min && sd[1] < d_max) {
+        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+        return true;
+      }
+    }
+  }
+  std::cout << "Checked " << obstacles.size() << " obstacles. Found none in range" << std::endl;
+  return false;  // No obstacles in region
 }
 #endif // MAP_H_

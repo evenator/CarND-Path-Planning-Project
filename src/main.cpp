@@ -72,8 +72,8 @@ int main() {
           Eigen::IOFormat vector_format(Eigen::StreamPrecision,
                                         Eigen::DontAlignCols, ", ", ", ", "",
                                         "", "(", ")");
-          std::cout << "Car State " << car_state_xy.format(vector_format)
-                    << std::endl;
+          std::cout << "Car State xy=" << car_state_xy.format(vector_format)
+                     << " sd=" << car_state_sd.format(vector_format) << std::endl;
 
           // Previous path data given to the Planner
           auto previous_path =
