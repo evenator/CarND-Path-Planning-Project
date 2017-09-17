@@ -125,6 +125,45 @@ private:
   Map *map_;
 };
 
+/**
+ * A utility function to print the current lane info for debugging
+ */
+void print_lane_info(
+    std::vector<double> const& leader_distances;
+    std::vector<int> const& leader_ids,
+    size_t best_lane,
+    size_t current_lane)
+{
+    // Print lane info
+    for (size_t i = 0; i < 3; ++i) {
+      std::cout << "| ";
+      if (best_lane == i) {
+        std::cout << "**";
+      }
+      else {
+        std::cout << "  ";
+      }
+      if (current_lane == i) {
+        std::cout << "(" << i << ")";
+      }
+      else {
+        std::cout << " " << i << " ";
+      }
+      if (best_lane == i) {
+        std::cout << "** ";
+      }
+      else {
+        std::cout << "   ";
+      }
+    }
+    std::cout << "|" << std::endl
+              << "|---------|---------|---------|" << std::endl;
+    for (size_t i = 0; i < 3; ++i) {
+      std::cout << "|" << leader_ids[i] << "@" << leader_distances[i];
+    }
+    std::cout << "|" << std::endl;
+}
+
 class FSMPlanner {
 public:
   FSMPlanner(Map *map) : map_(map), lane_(1), changing_lane_(false) {}
@@ -181,34 +220,7 @@ public:
       }
     }
 
-    // Print lane info
-    for (size_t i = 0; i < 3; ++i) {
-      std::cout << "| ";
-      if (best_lane == i) {
-        std::cout << "**";
-      }
-      else {
-        std::cout << "  ";
-      }
-      if (lane_ == i) {
-        std::cout << "(" << i << ")";
-      }
-      else {
-        std::cout << " " << i << " ";
-      }
-      if (best_lane == i) {
-        std::cout << "** ";
-      }
-      else {
-        std::cout << "   ";
-      }
-    }
-    std::cout << "|" << std::endl
-              << "|---------|---------|---------|" << std::endl;
-    for (size_t i = 0; i < 3; ++i) {
-      std::cout << "|" << leader_ids[i] << "@" << leader_distances[i];
-    }
-    std::cout << "|" << std::endl;
+    print_lane_info();
 
     // Only bother changing lanes if there's less than 50 m of space and the best lane has at least
     // 10 m more space than this lane
