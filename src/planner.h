@@ -224,7 +224,6 @@ public:
 
     // Only bother changing lanes if there's less than 50 m of space and the best lane has at least
     // 10 m more space than this lane
-    // TODO: Reenable lane changing
     bool should_change_lane = (leader_distances[lane_] < 50.0)
                               && (best_dist - leader_distances[lane_] > 10.0);
 
@@ -247,8 +246,6 @@ public:
         Path plan;
         auto planner = LaneKeepPlanner(map_, next_lane);
         if (previous_path.size() > 0) {
-          // TODO: Check for collisions
-          // TODO: Limit lateral acceleration during lane changes
           plan = planner.plan(truncated_previous, obstacles);
         } else {
           plan = planner.plan(car_state_xy, obstacles);
