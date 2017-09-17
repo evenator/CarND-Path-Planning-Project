@@ -132,6 +132,7 @@ public:
   Path plan(Eigen::Vector4d const &car_state_xy,
             std::vector<Obstacle> const &obstacles,
             Path const &previous_path = Path()) {
+    double t_predict = 0.5;
     // Update the state of changinge_lane_
     auto car_sd = map_->get_frenet(car_state_xy.head(3));
     if (changing_lane_) {
@@ -163,7 +164,7 @@ public:
         leader_ids.push_back(-1);
       }
       else {
-        double distance_to_leader = Map::s_dist(leader->sd()[0], car_sd[0]);
+        double distance_to_leader = Map::s_dist(leader->sd(t_predict)[0], car_sd[0]);
         leader_distances.push_back(distance_to_leader);
         leader_ids.push_back(leader->get_id());
       }
@@ -226,9 +227,10 @@ public:
         next_lane++;
       }
       double next_lane_center = lane_center(next_lane);
-      bool can_change_lane = !check_for_obstacles_frenet(car_sd[0]-10.0, car_sd[0]+50.0,
+      bool can_change_lane = !check_for_obstacles_frenet(car_sd[0]-25.0, car_sd[0]+25.0,
                                                          next_lane_center - 2.0, next_lane_center + 2.0,
-                                                         obstacles);
+                                                         obstacles,
+                                                         t_predict);
       if (can_change_lane) {
         Path plan;
         auto planner = LaneKeepPlanner(map_, next_lane);

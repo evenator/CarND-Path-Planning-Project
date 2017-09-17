@@ -59,13 +59,14 @@ private:
 
 static std::vector<Obstacle>::const_iterator
 find_immediate_leader(Eigen::Vector2d const &vehicle_frenet,
-                      std::vector<Obstacle> const &obstacles) {
+                      std::vector<Obstacle> const &obstacles,
+                      double time = 0.0) {
   int vehicle_lane = round((vehicle_frenet[1] - 2) / 4);
   double best_s = std::numeric_limits<double>::max();
   auto leader = obstacles.cend();
   for (auto obstacle = obstacles.cbegin(); obstacle != obstacles.cend();
        ++obstacle) {
-    auto obstacle_frenet = obstacle->sd();
+    auto obstacle_frenet = obstacle->sd(time);
     // Filter obstacles to only include those in the vehicle's lane
     if (!in_lane(vehicle_lane, obstacle_frenet[1])) {
       continue;
@@ -99,26 +100,30 @@ bool check_collisions(Eigen::Vector2d sd,
 
 bool check_for_obstacles_frenet(double s_min, double s_max,
                                 double d_min, double d_max,
-                                std::vector<Obstacle> const &obstacles) {
+                                std::vector<Obstacle> const &obstacles,
+                                double t=0.0) {
   std::cout << "Checking for obstacles in range s(" << s_min <<", "<<s_max<<") d("<<d_min<<", "<<d_max<<")"<<std::endl;
   // For wraparound
   bool invert_s = (s_min > s_max);
   for (auto const& obstacle : obstacles) {
-    Eigen::Vector2d sd = obstacle.sd();
+    Eigen::Vector2d sd = obstacle.sd(t);
     if (invert_s) {
       if ((sd[0] < s_min || sd[0] > s_max) && sd[1] > d_min && sd[1] < d_max) {
-        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << sd[0] << ", " << sd[1] << ")" << std::endl;
         return true;
       }
     }
     else {
       if (sd[0] > s_min && sd[0] < s_max && sd[1] > d_min && sd[1] < d_max) {
-        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+        std::cout << "Obstacle  " << obstacle.get_id() << " is in range. frenet=(" << sd[0] << ", " << sd[1] << ")" << std::endl;
         return true;
       }
     }
   }
   std::cout << "Checked " << obstacles.size() << " obstacles. Found none in range" << std::endl;
+  for (auto const& obstacle : obstacles){
+    std::cout << "Obstacle " << obstacle.get_id() << "@ (" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+  }
   return false;  // No obstacles in region
 }
 #endif // MAP_H_
