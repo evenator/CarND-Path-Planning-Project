@@ -129,7 +129,7 @@ private:
  * A utility function to print the current lane info for debugging
  */
 void print_lane_info(
-    std::vector<double> const& leader_distances;
+    std::vector<double> const& leader_distances,
     std::vector<int> const& leader_ids,
     size_t best_lane,
     size_t current_lane)
@@ -220,7 +220,7 @@ public:
       }
     }
 
-    print_lane_info();
+    print_lane_info(leader_distances, leader_ids, best_lane, lane_);
 
     // Only bother changing lanes if there's less than 50 m of space and the best lane has at least
     // 10 m more space than this lane
