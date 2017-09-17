@@ -122,7 +122,8 @@ bool check_for_obstacles_frenet(double s_min, double s_max,
   }
   std::cout << "Checked " << obstacles.size() << " obstacles. Found none in range" << std::endl;
   for (auto const& obstacle : obstacles){
-    std::cout << "Obstacle " << obstacle.get_id() << "@ (" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
+    std::cout << "Obstacle " << obstacle.get_id() << "@ (" << obstacle.sd(t)[0] << ", " << obstacle.sd(t)[1] << ") ";
+    std::cout << " (" << obstacle.sd()[0] << ", " << obstacle.sd()[1] << ")" << std::endl;
   }
   return false;  // No obstacles in region
 }
